@@ -6,25 +6,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 import GLOBALS from '../lib/_globals';
 import { socketSend } from '../lib/socket';
-import { MessageSchema, MessageActionOut, ConversationSchema } from '../lib/types';
+import { MessageSchema, MessageActionOut } from '../lib/types';
 import cache from '../lib/cache';
 import { NavigationProp, RouteProp } from '@react-navigation/native';
-import { onLikeAction, onMessageAction } from '../lib/socket';
+import { onMessageAction } from '../lib/socket';
 
-class MsgItem extends React.PureComponent<{ item: MessageSchema }> {
+class MsgItem extends React.PureComponent<{ item: MessageSchema, changedUser: boolean }> {
     render() {
-        let containerStyle: StyleProp<any> = { justifyContent: 'flex-start' }
-        let messageStyle: StyleProp<any> = { backgroundColor: '#e0e0e0' }
+        let containerStyle: StyleProp<any> = { alignItems: 'flex-start' }
+        let messageStyle: StyleProp<any> = { backgroundColor: '#e0e0e0', justifyContent: 'flex-start' }
         let textStyle: StyleProp<any> = { color: 'black' }
 
         if (this.props.item.username === cache.getUsername()) {
-            containerStyle.justifyContent = 'flex-end';
-            messageStyle.backgroundColor = '#1c57b8';
-            textStyle.color = 'white';
+            containerStyle = { alignItems: 'flex-end' };
+            messageStyle = { backgroundColor: '#1c57b8', justifyContent: 'flex-end' };
+            textStyle = { color: 'white' };
         }
 
         return (
             <View style={{ ...styles.messageContainer, ...containerStyle }}>
+                {this.props.changedUser ? <Text style={styles.username}>{this.props.item.username}</Text> : null}
                 <View style={{ ...styles.message, ...messageStyle }}>
                     <Text style={{ ...textStyle }}>{this.props.item.content}</Text>
                 </View>
@@ -70,18 +71,21 @@ export default function Conversation(props: Props) {
     // Initialize
     useEffect(() => {
         const unsubscribe = props.navigation.addListener('focus', () => {
-            // Set action handlers
-            setActionHandlers();
-
             // Save conversation Id
             let id = props.route.params?.conversationId;
             if (id) {
                 setConversationId(id);
             }
 
+            // Set title accordingly
+            props.navigation.setOptions({ title: cache.getConversationById(id)?.name || 'Conversation' })
+
+            // Set action handlers
+            setActionHandlers();
+
             // Batch get messages if their currently aren't any
             let conversationMessages = cache.getMessages(conversationId);
-            if (conversationMessages?.size === 0 || !conversationMessages) {
+            if (conversationMessages?.length === 0 || !conversationMessages) {
                 batchGetMessages(id);
             }
         });
@@ -108,7 +112,6 @@ export default function Conversation(props: Props) {
         })
     }
 
-
     function handleSend() {
         let msg: MessageActionOut = {
             action: 'message',
@@ -131,8 +134,18 @@ export default function Conversation(props: Props) {
             <FlatList
                 ref={(ref) => setFlatList(ref)}
                 style={styles.list}
-                data={Array.from(cache.getMessages(conversationId)?.values() || [])}
-                renderItem={(data) => <MsgItem item={data.item} />}
+                data={cache.getMessages(conversationId)}
+                renderItem={(data) => {
+                    let changedUser = false;
+                    if (data.index > 0) {
+                        let msgs = cache.getMessages(conversationId);
+                        changedUser = msgs[data.index - 1].username !== data.item.username ? true : false;
+                    }
+                    return (<MsgItem
+                        item={data.item}
+                        changedUser={changedUser}
+                    />)
+                }}
                 keyExtractor={(item) => item.messageId}
             />
             <View style={styles.inputs}>
@@ -171,19 +184,23 @@ const styles = StyleSheet.create({
     },
     messageContainer: {
         width: Dimensions.get('window').width - 16,
-        flexDirection: 'row',
         marginBottom: 10
+    },
+    username: {
+        color: '#606060',
+        fontSize: 14,
+        paddingBottom: 4
     },
     message: {
         height: Dimensions.get('window').height * .05,
-        width: Dimensions.get('window').width * .65,
+        minWidth: Dimensions.get('window').width * .15,
+        maxWidth: Dimensions.get('window').width * .65,
         backgroundColor: '#e0e0e0',
         flexDirection: 'row',
-        justifyContent: 'flex-start',
         alignItems: 'center',
         alignContent: 'center',
         flexWrap: 'wrap',
-        paddingHorizontal: 4,
+        paddingHorizontal: 8,
         borderRadius: 8
     }
 });

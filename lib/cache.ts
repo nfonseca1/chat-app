@@ -1,7 +1,7 @@
 import { ConversationSchema, MessageSchema } from './types';
 
 let _username = '';
-let _conversations: ConversationSchema[] = []
+let _conversations: Map<string, ConversationSchema> = new Map();
 let _messages: Map<string, Map<string, MessageSchema>> = new Map();
 
 const cache = {
@@ -13,13 +13,19 @@ const cache = {
      * Gets a list of all conversations for the user.
      * @returns List of conversations
      */
-    getConversations: () => _conversations,
+    getConversations: () => Array.from(_conversations.values()),
+    /**
+     * Gets a single conversation for the user.
+     * @param conversationId - The Id of the conversation to retrieve
+     * @returns A conversation
+     */
+    getConversationById: (conversationId: string) => _conversations.get(conversationId),
     /**
      * Set a list of all conversations for this user. Replaces any conversations that currently exist.
      * @param conversations - The array of conversations to set for the user
      */
     setConversations: (conversations: ConversationSchema[]) => {
-        _conversations = conversations;
+        _conversations = new Map(conversations.map(c => [c.conversationId, c]));
         let newMessages = new Map();
         for (let c of conversations) {
             newMessages.set(c.conversationId, new Map());
@@ -31,7 +37,7 @@ const cache = {
      * @param conversation - The conversation to append to the list
      */
     addConversation: (conversation: ConversationSchema) => {
-        _conversations = [..._conversations, conversation];
+        _conversations.set(conversation.conversationId, conversation);
         _messages.set(conversation.conversationId, new Map());
     },
     /**
@@ -40,7 +46,7 @@ const cache = {
      * @returns A map of messages for the conversation
      */
     getMessages: (conversationId: string) => {
-        return _messages.get(conversationId);
+        return Array.from(_messages.get(conversationId)?.values() || []);
     },
     /**
      * Set a list of all messages for the given conversation. If any messages already exist for that conversation, they will be replaced.
