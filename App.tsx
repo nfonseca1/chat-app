@@ -2,8 +2,10 @@ import React from 'react';
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { Auth } from 'aws-amplify';
 
+import { closeWebSocket } from './lib/socket';
 import AuthScreen from './components/Auth';
 import Home from './components/Home';
 import Conversation from './components/Conversation';
@@ -18,6 +20,15 @@ export default function App() {
                 <Stack.Screen name="Auth" component={AuthScreen} />
                 <Stack.Screen name="Home" component={Home} options={({ navigation }) => ({
                     title: 'Conversations',
+                    headerLeft: () => (
+                        <TouchableOpacity onPress={() => {
+                            Auth.signOut();
+                            closeWebSocket();
+                            navigation.navigate("Auth");
+                        }}>
+                            <MaterialIcons name="logout" size={32} style={{ marginLeft: 10, transform: [{ scaleX: -1 }] }} color="red" />
+                        </TouchableOpacity>
+                    ),
                     headerRight: () => (
                         <TouchableOpacity onPress={() => navigation.navigate("New Conversation")}>
                             <Ionicons name="add" size={32} style={{ marginRight: 10 }} color="black" />

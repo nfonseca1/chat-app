@@ -1,12 +1,11 @@
-import { StatusBar } from 'expo-status-bar';
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View, TextInput, Button, TouchableOpacity } from 'react-native';
-import { Authenticator, SignIn, SignUp, ConfirmSignUp, AmplifyTheme } from 'aws-amplify-react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import Amplify from '@aws-amplify/core';
 import Auth, { CognitoUser } from '@aws-amplify/auth';
 
 import cache from '../lib/cache';
+import GLOBALS from '../lib/_globals';
 
 Amplify.configure({
     Auth: {
@@ -39,7 +38,7 @@ function AuthScreen(props: any) {
     }, [])
 
     function handleSignIn() {
-        let authUsername = username;
+        let authUsername = username.toLowerCase();
 
         Auth.signIn(authUsername, password)
             .then((user) => {
@@ -70,11 +69,19 @@ function AuthScreen(props: any) {
     }
 
     function handleConfirmation() {
-        let authUsername = username;
+        let authUsername = username.toLowerCase();
 
         Auth.confirmSignUp(authUsername, confirmation)
             .then(() => {
                 cache.setUsername(authUsername);
+                // Save user in database
+                fetch(`http://${GLOBALS.API_HOST}:${GLOBALS.API_PORT}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: authUsername })
+                })
                 props.navigation.navigate('Home');
             })
             .catch(e => {

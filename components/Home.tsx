@@ -35,22 +35,26 @@ function useForceUpdate() {
 export default function Home(props: Props) {
     const forceUpdate = useForceUpdate();
 
+    useEffect(() => {
+        // Add conversation if one is passed
+        let conversation = props.route.params?.conversation;
+        if (conversation) {
+            cache.addConversation(conversation);
+            forceUpdate();
+        }
+    }, [props.route.params])
+
     // Set screen focus event listener
     useEffect(() => {
         const unsubscribe = props.navigation.addListener('focus', () => {
             // Set action handlers
             setActionHandlers();
 
-            // Add conversation if one is passed
-            let conversation = props.route.params?.conversation;
-            if (conversation) {
-                cache.addConversation(conversation);
-                forceUpdate();
-            }
+
         });
 
         return unsubscribe;
-    }, [props.navigation]);
+    });
 
     // Initialize
     useEffect(() => {
@@ -62,7 +66,8 @@ export default function Home(props: Props) {
             .then(res => res.json())
             .then((data: ConversationSchema[] | { error: string }) => {
                 if ('error' in data) {
-                    console.warn(data.error);
+                    console.log(data.error);
+                    cache.setConversations([]);
                 }
                 else {
                     cache.setConversations(data);
@@ -93,15 +98,6 @@ export default function Home(props: Props) {
                 data={cache.getConversations()}
                 keyExtractor={(item) => item.conversationId}
                 renderItem={({ item }) => <ConversationItem item={item} openConversation={openConversation} />}
-            />
-            <Button
-                color="red"
-                title="Sign Out"
-                onPress={() => {
-                    Auth.signOut();
-                    closeWebSocket();
-                    props.navigation.navigate("Auth");
-                }}
             />
         </SafeAreaView>
     )
